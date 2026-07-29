@@ -85,13 +85,24 @@ def index():
 
 @app.route('/run', methods=['POST'])
 def run_agent():
-    data = request.get_json()
-    scenario_file = data.get('scenario', 'basic_attack.yaml')
-    # Ensure the file exists in examples/ to avoid path traversal
-    if not os.path.exists(f"examples/{scenario_file}"):
+    data = request.get_json() or {}
+    scenario_file = str(data.get('scenario', 'basic_attack.yaml'))
+
+    # Allow only known scenario files from examples/
+    allowed_scenarios = set(get_scenarios())
+    if scenario_file not in allowed_scenarios:
+        return jsonify({"logs": f"❌ Error: Scenario '{scenario_file}' not found."})
+
+    # Resolve and validate path within examples/ to prevent path traversal
+    base_dir = os.path.abspath("examples")
+    candidate_path = os.path.abspath(os.path.join(base_dir, scenario_file))
+    if os.path.commonpath([base_dir, candidate_path]) != base_dir:
+        return jsonify({"logs": f"❌ Error: Scenario '{scenario_file}' not found."})
+
+    if not os.path.isfile(candidate_path):
         return jsonify({"logs": f"❌ Error: Scenario '{scenario_file}' not found."})
     
-    agent = AIHackerAgent(scenario_path=f"examples/{scenario_file}")
+    agent = AIHackerAgent(scenario_path=candidate_path)
     with contextlib.redirect_stdout(io.StringIO()) as f:
         agent.run()
     output = f.getvalue()
