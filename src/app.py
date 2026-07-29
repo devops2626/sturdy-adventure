@@ -85,8 +85,13 @@ def index():
 
 @app.route('/run', methods=['POST'])
 def run_agent():
-    data = request.get_json()
-    scenario_file = data.get('scenario', 'basic_attack.yaml')
+    data = request.get_json() or {}
+    scenario_file = str(data.get('scenario', 'basic_attack.yaml'))
+
+    # Allow only known scenario files from examples/
+    allowed_scenarios = set(get_scenarios())
+    if scenario_file not in allowed_scenarios:
+        return jsonify({"logs": f"❌ Error: Scenario '{scenario_file}' not found."})
 
     # Resolve and validate path within examples/ to prevent path traversal
     base_dir = os.path.abspath("examples")
