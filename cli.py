@@ -384,8 +384,8 @@ def cmd_analyze(args):
             result = resp.json()
             text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
             safe_text = _redact_sensitive_text(text, api_key=api_key)
-            print("[GEMINI] Analysis:")
-            print(safe_text)
+            print("[GEMINI] Analysis generated successfully.")
+            print(f"[GEMINI] Redacted analysis length: {len(safe_text)} characters.")
             return
         except Exception as e:
             print(f"[ERROR] Gemini API error: {e}")
