@@ -2,6 +2,7 @@ import sys
 import argparse
 import os
 import json
+import re
 from datetime import datetime
 from engine import SimulationEngine
 import glob
@@ -339,6 +340,28 @@ def cmd_report(args):
             f.write("\n".join(lines))
         print(f"[REPORT] Markdown report saved: {report_path}")
 
+def _redact_sensitive_text(text, api_key=None):
+    if not isinstance(text, str):
+        return text
+
+    redacted = text
+
+    # Redact URL-style API key parameters
+    redacted = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED]', redacted, flags=re.IGNORECASE)
+
+    # Redact common secret assignments
+    redacted = re.sub(
+        r'(?i)\b(gemini_api_key|api[_-]?key|password|passwd|token|secret)\b\s*[:=]\s*([^\s,;]+)',
+        lambda m: f"{m.group(1)}=[REDACTED]",
+        redacted
+    )
+
+    # Redact exact in-memory API key value if echoed back
+    if api_key:
+        redacted = redacted.replace(api_key, "[REDACTED]")
+
+    return redacted
+
 def cmd_analyze(args):
     import requests
     if args.input.endswith((".yml", ".yaml")):
@@ -360,8 +383,9 @@ def cmd_analyze(args):
             resp.raise_for_status()
             result = resp.json()
             text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-            print("[GEMINI] Analysis:")
-            print(text)
+            safe_text = _redact_sensitive_text(text, api_key=api_key)
+            print("[GEMINI] Analysis generated successfully.")
+            print(f"[GEMINI] Redacted analysis length: {len(safe_text)} characters.")
             return
         except Exception as e:
             print(f"[ERROR] Gemini API error: {e}")
