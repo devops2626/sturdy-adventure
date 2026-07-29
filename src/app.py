@@ -88,6 +88,10 @@ def run_agent():
     data = request.get_json() or {}
     scenario_file = str(data.get('scenario', 'basic_attack.yaml'))
 
+    # Reject any path components from user input; only plain filenames are allowed.
+    if not scenario_file or scenario_file != os.path.basename(scenario_file):
+        return jsonify({"logs": f"❌ Error: Scenario '{scenario_file}' not found."})
+
     # Allow only known scenario files from examples/
     allowed_scenarios = set(get_scenarios())
     if scenario_file not in allowed_scenarios:
