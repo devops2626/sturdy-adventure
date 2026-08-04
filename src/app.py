@@ -92,15 +92,13 @@ def run_agent():
     if not scenario_file or scenario_file != os.path.basename(scenario_file):
         return jsonify({"logs": f"❌ Error: Scenario '{scenario_file}' not found."})
 
-    # Allow only known scenario files from examples/
-    allowed_scenarios = set(get_scenarios())
-    if scenario_file not in allowed_scenarios:
-        return jsonify({"logs": f"❌ Error: Scenario '{scenario_file}' not found."})
-
-    # Resolve and validate path within examples/ to prevent path traversal
-    base_dir = os.path.abspath("examples")
-    candidate_path = os.path.abspath(os.path.join(base_dir, scenario_file))
-    if os.path.commonpath([base_dir, candidate_path]) != base_dir:
+    # Allow only known scenario files from examples/ and resolve to trusted absolute paths
+    scenario_map = {
+        os.path.basename(path): os.path.abspath(path)
+        for path in glob.glob("examples/*.yaml")
+    }
+    candidate_path = scenario_map.get(scenario_file)
+    if not candidate_path:
         return jsonify({"logs": f"❌ Error: Scenario '{scenario_file}' not found."})
 
     if not os.path.isfile(candidate_path):
